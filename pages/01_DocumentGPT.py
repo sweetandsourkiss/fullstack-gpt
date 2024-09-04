@@ -1,4 +1,3 @@
-from pyparsing import col
 import streamlit as st
 from langchain.document_loaders import UnstructuredFileLoader
 from langchain.text_splitter import CharacterTextSplitter
@@ -39,26 +38,7 @@ def set_api_key():
 
 def reset_api_key():
     del st.session_state["api_key"]
-
-
-with st.sidebar:
-    st.text_input("your api key", key="input", on_change=set_api_key)
-
-llm_settings = {
-    "temperature": 0.1,
-    "streaming": True,
-    "callbacks": [
-        ChatCallbackHandler(),
-    ],
-}
-
-if "api_key" in st.session_state:
-    llm_settings["api_key"] = st.session_state["api_key"]
-    with st.sidebar:
-        st.write(f"your key: {st.session_state['api_key']}")
-        st.button("Reset", type="primary", on_click=reset_api_key)
-
-llm = ChatOpenAI(**llm_settings)
+    st.toast("Api key reset")
 
 
 @st.cache_data(show_spinner="Embedding file...")
@@ -131,6 +111,26 @@ def paint_history():
 
 def format_docs(docs):
     return "\n\n".join(document.page_content for document in docs)
+
+
+with st.sidebar:
+    st.text_input("your api key", key="input", on_change=set_api_key)
+
+llm_settings = {
+    "temperature": 0.1,
+    "streaming": True,
+    "callbacks": [
+        ChatCallbackHandler(),
+    ],
+}
+
+if "api_key" in st.session_state:
+    llm_settings["api_key"] = st.session_state["api_key"]
+    with st.sidebar:
+        st.write(f"your key: {st.session_state['api_key']}")
+        st.button("Reset", type="primary", on_click=reset_api_key)
+
+llm = ChatOpenAI(**llm_settings)
 
 
 prompt = ChatPromptTemplate.from_messages(
@@ -190,6 +190,9 @@ else:
 
 # for challenge
 with st.sidebar:
+    st.link_button(
+        "Go to repository", "https://github.com/sweetandsourkiss/fullstack-gpt"
+    )
     code = '''
     import streamlit as st
 from langchain.document_loaders import UnstructuredFileLoader
@@ -223,25 +226,15 @@ class ChatCallbackHandler(BaseCallbackHandler):
         self.message_box.markdown(self.message)
 
 
-with st.sidebar:
-    api_key = st.text_input("your api key")
-    if api_key:
-        st.session_state["api_key"] = api_key
-        st.success("✅ Applied")
+def set_api_key():
+    st.session_state["api_key"] = st.session_state["input"]
+    st.session_state["input"] = ""
+    st.toast("Api key applied")
 
 
-llm_settings = {
-    "temperature": 0.1,
-    "streaming": True,
-    "callbacks": [
-        ChatCallbackHandler(),
-    ],
-}
-
-if "api_key" in st.session_state:
-    llm_settings["api_key"] = st.session_state["api_key"]
-
-llm = ChatOpenAI(**llm_settings)
+def reset_api_key():
+    del st.session_state["api_key"]
+    st.toast("Api key reset")
 
 
 @st.cache_data(show_spinner="Embedding file...")
@@ -316,6 +309,26 @@ def format_docs(docs):
     return "\n\n".join(document.page_content for document in docs)
 
 
+with st.sidebar:
+    st.text_input("your api key", key="input", on_change=set_api_key)
+
+llm_settings = {
+    "temperature": 0.1,
+    "streaming": True,
+    "callbacks": [
+        ChatCallbackHandler(),
+    ],
+}
+
+if "api_key" in st.session_state:
+    llm_settings["api_key"] = st.session_state["api_key"]
+    with st.sidebar:
+        st.write(f"your key: {st.session_state['api_key']}")
+        st.button("Reset", type="primary", on_click=reset_api_key)
+
+llm = ChatOpenAI(**llm_settings)
+
+
 prompt = ChatPromptTemplate.from_messages(
     [
         (
@@ -372,7 +385,4 @@ else:
     st.session_state["messages"] = []
 
     '''
-    st.link_button(
-        "Go to repository", "https://github.com/sweetandsourkiss/fullstack-gpt"
-    )
     st.code(code, language="python")
