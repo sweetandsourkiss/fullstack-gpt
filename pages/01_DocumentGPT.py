@@ -8,6 +8,7 @@ from langchain.prompts import ChatPromptTemplate
 from langchain.schema.runnable import RunnableLambda, RunnablePassthrough
 from langchain.chat_models import ChatOpenAI
 from langchain.callbacks.base import BaseCallbackHandler
+from pathlib import Path
 
 st.set_page_config(
     page_title="DocumentGPT",
@@ -40,22 +41,48 @@ llm = ChatOpenAI(
 
 @st.cache_data(show_spinner="Embedding file...")
 def embed_file(file):
+    # 파일 내용을 읽음
     file_content = file.read()
-    file_path = f"./.cache/files/{file.name}"
+
+    # 저장할 경로 설정
+    cache_dir_path = Path("./.cache/files")
+    cache_dir_path.mkdir(parents=True, exist_ok=True)  # 디렉토리 생성 (존재하지 않으면)
+
+    # 파일 저장 경로 설정
+    file_path = cache_dir_path / file.name
+
+    # 파일 저장
     with open(file_path, "wb") as f:
         f.write(file_content)
-    cache_dir = LocalFileStore(f"./.cache/embeddings/{file.name}")
+
+    # Embeddings 저장할 경로 생성
+    embeddings_dir_path = Path(f"./.cache/embeddings/{file.name}")
+    embeddings_dir_path.mkdir(
+        parents=True, exist_ok=True
+    )  # 디렉토리 생성 (존재하지 않으면)
+
+    # LocalFileStore 설정
+    cache_dir = LocalFileStore(str(embeddings_dir_path))
+
+    # 파일을 분할하는 Text Splitter 설정
     splitter = CharacterTextSplitter.from_tiktoken_encoder(
         separator="\n",
         chunk_size=600,
         chunk_overlap=100,
     )
-    loader = UnstructuredFileLoader(file_path)
+
+    # 파일 로드 및 분할
+    loader = UnstructuredFileLoader(str(file_path))
     docs = loader.load_and_split(text_splitter=splitter)
+
+    # Embeddings 생성 및 캐시 처리
     embeddings = OpenAIEmbeddings()
     cached_embeddings = CacheBackedEmbeddings.from_bytes_store(embeddings, cache_dir)
+
+    # FAISS를 사용한 VectorStore 생성
     vectorstore = FAISS.from_documents(docs, cached_embeddings)
     retriever = vectorstore.as_retriever()
+
     return retriever
 
 
