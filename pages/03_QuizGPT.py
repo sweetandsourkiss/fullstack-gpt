@@ -8,33 +8,140 @@ from langchain.retrievers import WikipediaRetriever
 from langchain.schema import BaseOutputParser
 import json
 
+# streamlit config
+st.set_page_config(
+    page_title="QuizGPT",
+    page_icon="❓",
+)
 
+
+# class
 class JsonOutputParser(BaseOutputParser):
     def parse(self, text):
         text = text.replace("```", "").replace("json", "")
         return json.loads(text)
 
 
-output_parser = JsonOutputParser()
+# functions
+@st.cache_data(show_spinner="Loading file...")
+def split_file(file):
+    file_content = file.read()
+    file_path = f"./.cache/quiz_files/{file.name}"
+    with open(file_path, "wb") as f:
+        f.write(file_content)
+    splitter = CharacterTextSplitter.from_tiktoken_encoder(
+        separator="\n",
+        chunk_size=600,
+        chunk_overlap=100,
+    )
+    loader = UnstructuredFileLoader(file_path)
+    docs = loader.load_and_split(text_splitter=splitter)
+    return docs
 
 
-st.set_page_config(
-    page_title="QuizGPT",
-    page_icon="❓",
-)
+@st.cache_data(show_spinner="Making quiz...")
+def run_quiz_chain(_docs, topic):
+    chain = {"context": questions_chain} | formatting_chain | output_parser
+    return chain.invoke(_docs)
 
-st.title("QuizGPT")
 
-llm = ChatOpenAI(
-    temperature=0.1,
-    model="gpt-3.5-turbo-1106",
-    streaming=True,
-    callbacks=[StreamingStdOutCallbackHandler()],
-)
+@st.cache_data(show_spinner="Searching Wikipedia...")
+def wiki_search(term):
+    retriever = WikipediaRetriever(top_k_results=5)
+    return retriever.get_relevant_documents(term)
 
 
 def format_docs(docs):
     return "\n\n".join(document.page_content for document in docs)
+
+
+def set_api_key():
+    st.session_state["api_key"] = st.session_state["input"]
+    st.session_state["input"] = ""
+    st.toast("Api key applied")
+
+
+def reset_api_key():
+    del st.session_state["api_key"]
+    st.toast("Api key reset")
+
+
+# chain settings
+
+output_parser = JsonOutputParser()
+
+function = {
+    "name": "create_quiz",
+    "description": "function that takes a list of questions and answers and returns a quiz",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "questions": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "question": {
+                            "type": "string",
+                        },
+                        "answers": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "answer": {
+                                        "type": "string",
+                                    },
+                                    "correct": {
+                                        "type": "boolean",
+                                    },
+                                },
+                                "required": ["answer", "correct"],
+                            },
+                        },
+                    },
+                    "required": ["question", "answers"],
+                },
+            }
+        },
+        "required": ["questions"],
+    },
+}
+
+# .bind(
+#     function_call={
+#         "name": "create_quiz",
+#     },
+#     functions=[
+#         function,
+#     ],
+# )
+
+llm_settings = {
+    "model": "gpt-4o-mini",
+    "temperature": 0.1,
+    "streaming": True,
+    "callbacks": [
+        StreamingStdOutCallbackHandler(),
+    ],
+}
+
+if "api_key" in st.session_state:
+    llm_settings["api_key"] = st.session_state["api_key"]
+    with st.sidebar:
+        encoded_key = st.session_state["api_key"][:8] + "..."
+        st.write(f"your key: {encoded_key}")
+        st.button("Reset", type="primary", on_click=reset_api_key)
+else:
+    with st.sidebar:
+        st.text_input(
+            "your api key",
+            key="input",
+            on_change=set_api_key,
+        )
+
+
+llm = ChatOpenAI(**llm_settings)
 
 
 questions_prompt = ChatPromptTemplate.from_messages(
@@ -201,34 +308,9 @@ formatting_prompt = ChatPromptTemplate.from_messages(
 
 formatting_chain = formatting_prompt | llm
 
+# streamlit UIs
 
-@st.cache_data(show_spinner="Loading file...")
-def split_file(file):
-    file_content = file.read()
-    file_path = f"./.cache/quiz_files/{file.name}"
-    with open(file_path, "wb") as f:
-        f.write(file_content)
-    splitter = CharacterTextSplitter.from_tiktoken_encoder(
-        separator="\n",
-        chunk_size=600,
-        chunk_overlap=100,
-    )
-    loader = UnstructuredFileLoader(file_path)
-    docs = loader.load_and_split(text_splitter=splitter)
-    return docs
-
-
-@st.cache_data(show_spinner="Making quiz...")
-def run_quiz_chain(_docs, topic):
-    chain = {"context": questions_chain} | formatting_chain | output_parser
-    return chain.invoke(_docs)
-
-
-@st.cache_data(show_spinner="Searching Wikipedia...")
-def wiki_search(term):
-    retriever = WikipediaRetriever(top_k_results=5)
-    return retriever.get_relevant_documents(term)
-
+st.title("QuizGPT")
 
 with st.sidebar:
     docs = None
