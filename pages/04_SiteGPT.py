@@ -8,6 +8,14 @@ from langchain.prompts import ChatPromptTemplate
 from fake_useragent import UserAgent
 import streamlit as st
 
+
+st.set_page_config(
+    page_title="SiteGPT",
+    page_icon="🖥️",
+)
+
+CLOUDFARE_URL = "https://www.cloudflare.com/sitemap.xml"
+
 llm = ChatOpenAI(
     model="gpt-4o-mini",
     temperature=0.1,
@@ -116,13 +124,18 @@ def parse_page(soup):
 
 
 @st.cache_data(show_spinner="Loading website...")
-def load_website(url):
+def load_website():
     splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
         chunk_size=1000,
         chunk_overlap=200,
     )
     loader = SitemapLoader(
-        url,
+        CLOUDFARE_URL,
+        filter_urls=[
+            r"^(.*\/workers-ai\/).*",
+            r"^(.*\/ai-gateway\/).*",
+            r"^(.*\/vectorize\/).*",
+        ],
         parsing_function=parse_page,
     )
     loader.requests_per_second = 2
@@ -135,12 +148,6 @@ def load_website(url):
     return vector_store.as_retriever()
 
 
-st.set_page_config(
-    page_title="SiteGPT",
-    page_icon="🖥️",
-)
-
-
 st.markdown(
     """
     # SiteGPT
@@ -151,30 +158,17 @@ st.markdown(
 """
 )
 
-
-with st.sidebar:
-    url = st.text_input(
-        "Write down a URL",
-        placeholder="https://example.com",
+retriever = load_website()
+query = st.text_input("Ask a question to the website.")
+if query:
+    chain = (
+        {
+            "docs": retriever,
+            "question": RunnablePassthrough(),
+        }
+        | RunnableLambda(get_answers)
+        | RunnableLambda(choose_answer)
     )
 
-
-if url:
-    if ".xml" not in url:
-        with st.sidebar:
-            st.error("Please write down a Sitemap URL.")
-    else:
-        retriever = load_website(url)
-        query = st.text_input("Ask a question to the website.")
-        if query:
-            chain = (
-                {
-                    "docs": retriever,
-                    "question": RunnablePassthrough(),
-                }
-                | RunnableLambda(get_answers)
-                | RunnableLambda(choose_answer)
-            )
-
-            result = chain.invoke(query)
-            st.write(result.content)
+    result = chain.invoke(query)
+    st.write(result.content)
