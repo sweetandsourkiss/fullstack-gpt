@@ -1,7 +1,7 @@
-import streamlit as st
 from openai import OpenAI, AssistantEventHandler
-from pathlib import Path
 from typing_extensions import override
+from pathlib import Path
+import streamlit as st
 
 st.title("OpenAI Assistant")
 
