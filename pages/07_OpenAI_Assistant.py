@@ -6,19 +6,6 @@ import streamlit as st
 st.title("OpenAI Assistant")
 
 
-def make_file(keyword, content):
-    # 저장할 경로 설정
-    save_text_path = Path("./.cache/research_files")
-    save_text_path.mkdir(parents=True, exist_ok=True)  # 디렉토리 생성 (존재하지 않으면)
-
-    # 파일 저장 경로 설정
-    file_path = "./.cache/research_files/" + keyword + ".txt"
-
-    # 파일 저장 (텍스트 모드)
-    with open(file_path, "w", encoding="utf-8") as f:
-        f.write(content)
-
-
 class EventHandler(AssistantEventHandler):
     @override
     def on_event(self, event):
@@ -54,6 +41,7 @@ class EventHandler(AssistantEventHandler):
                 self.message += text
                 self.message_box.markdown(self.message)
                 print(text, end="", flush=True)
+        st.session_state["recent_answer"] = self.message
 
 
 def set_api_key():
@@ -147,6 +135,10 @@ if "api_key" in st.session_state:
                 event_handler=EventHandler(),
             ) as stream:
                 stream.until_done()
+            # save the recent answer
+            st.download_button(
+                "Download this answer", st.session_state["recent_answer"]
+            )
 
 
 else:
