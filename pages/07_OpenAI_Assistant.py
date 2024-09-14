@@ -56,33 +56,6 @@ class EventHandler(AssistantEventHandler):
                 print(text, end="", flush=True)
 
 
-def get_run(run_id, thread_id):
-    return client.beta.threads.runs.retrieve(
-        run_id=run_id,
-        thread_id=thread_id,
-    )
-
-
-def send_message(thread_id, content):
-    return client.beta.threads.messages.create(
-        thread_id=thread_id,
-        role="user",
-        content=content,
-    )
-
-
-def get_messages(thread_id):
-    messages = client.beta.threads.messages.list(
-        thread_id=thread_id,
-    )
-    messages = list(messages)
-    messages.reverse()
-    for message in messages:
-        print(f"{message.role}: {message.content[0].text.value}")
-        for annotation in message.content[0].text.annotations:
-            print(f"Source: {annotation.file_citation}")
-
-
 def set_api_key():
     st.session_state["api_key"] = st.session_state["api_key_input"]
     st.session_state["api_key_input"] = ""
@@ -192,13 +165,10 @@ with st.sidebar:
     )
     st.code(
         """
-        import streamlit as st
-from openai import OpenAI
-from pathlib import Path
-from langchain.utilities import DuckDuckGoSearchAPIWrapper
-from langchain.retrievers import WikipediaRetriever
+        from openai import OpenAI, AssistantEventHandler
 from typing_extensions import override
-from openai import AssistantEventHandler
+from pathlib import Path
+import streamlit as st
 
 st.title("OpenAI Assistant")
 
@@ -251,33 +221,6 @@ class EventHandler(AssistantEventHandler):
                 self.message += text
                 self.message_box.markdown(self.message)
                 print(text, end="", flush=True)
-
-
-def get_run(run_id, thread_id):
-    return client.beta.threads.runs.retrieve(
-        run_id=run_id,
-        thread_id=thread_id,
-    )
-
-
-def send_message(thread_id, content):
-    return client.beta.threads.messages.create(
-        thread_id=thread_id,
-        role="user",
-        content=content,
-    )
-
-
-def get_messages(thread_id):
-    messages = client.beta.threads.messages.list(
-        thread_id=thread_id,
-    )
-    messages = list(messages)
-    messages.reverse()
-    for message in messages:
-        print(f"{message.role}: {message.content[0].text.value}")
-        for annotation in message.content[0].text.annotations:
-            print(f"Source: {annotation.file_citation}")
 
 
 def set_api_key():
