@@ -1,6 +1,5 @@
 from openai import OpenAI, AssistantEventHandler
 from typing_extensions import override
-from pathlib import Path
 import streamlit as st
 
 st.title("OpenAI Assistant")
@@ -159,7 +158,6 @@ with st.sidebar:
         """
         from openai import OpenAI, AssistantEventHandler
 from typing_extensions import override
-from pathlib import Path
 import streamlit as st
 
 st.title("OpenAI Assistant")
