@@ -1,10 +1,7 @@
 import streamlit as st
-from openai import OpenAI
+from openai import OpenAI, AssistantEventHandler
 from pathlib import Path
-from langchain.utilities import DuckDuckGoSearchAPIWrapper
-from langchain.retrievers import WikipediaRetriever
 from typing_extensions import override
-from openai import AssistantEventHandler
 
 st.title("OpenAI Assistant")
 
